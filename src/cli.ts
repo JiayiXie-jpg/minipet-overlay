@@ -89,10 +89,9 @@ function configureMinipet() {
   }
 }
 
-function openBrowser() {
-  const url = 'http://127.0.0.1:3210';
+function openBrowser(url = 'http://127.0.0.1:3210') {
   const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
-  try { execSync(`${cmd} ${url}`); } catch {}
+  try { execSync(`${cmd} "${url}"`); } catch {}
 }
 
 function ask(question: string): Promise<string> {
@@ -111,26 +110,13 @@ async function onboarding() {
   console.log('');
   console.log('请选择你的编程搭子形象：');
   console.log('  1. 使用默认形象');
-  console.log('  2. 上传照片生成自定义形象');
+  console.log('  2. 打开网页生成自定义形象');
   console.log('');
 
   const choice = await ask('请输入 (1/2): ');
 
   if (choice === '2') {
-    const photoPath = await ask('请输入照片路径: ');
-    if (!photoPath) {
-      console.log('未输入路径，使用默认形象');
-    } else {
-      const name = await ask('给形象起个名字（直接回车用文件名）: ');
-      if (name) {
-        process.argv.push('--name', name);
-      }
-      console.log('');
-      console.log('开始生成形象，这需要大约 10-20 分钟...');
-      console.log('生成完成后会自动启动编程搭子。');
-      console.log('');
-      await generate(photoPath);
-    }
+    generate();
   } else {
     console.log('已选择默认形象');
   }
@@ -263,74 +249,83 @@ function status() {
   }
 }
 
-async function generate(photoPath: string) {
-  if (!photoPath) {
-    console.log('用法: minipet-overlay generate <photo-path> [--name <名称>]');
-    console.log('  支持 .jpg / .jpeg / .png 格式');
-    console.log('  --name 可选，不填则自动用照片文件名');
-    return;
-  }
+const DIY_SERVER = process.env.DIY_SERVER || 'http://118.196.36.27:8765';
 
-  const resolvedPath = path.resolve(photoPath);
-  if (!fs.existsSync(resolvedPath)) {
-    console.log(`文件不存在: ${resolvedPath}`);
-    return;
-  }
-
-  const ext = path.extname(resolvedPath).toLowerCase();
-  if (!['.jpg', '.jpeg', '.png'].includes(ext)) {
-    console.log('不支持的格式，请使用 .jpg / .jpeg / .png');
-    return;
-  }
-
-  // Get name from --name arg, or fall back to photo filename
-  const nameArgIdx = process.argv.indexOf('--name');
-  let name = nameArgIdx >= 0 ? process.argv[nameArgIdx + 1] : null;
-  if (!name) {
-    name = path.basename(resolvedPath, ext);
-  }
-
-  // Sanitize name for use as directory name
-  const safeName = name.replace(/[\/\\:*?"<>|]/g, '_').trim();
-  if (!safeName) {
-    console.log('名称无效');
-    return;
-  }
-
-  const outputDir = path.join(AVATARS_DIR, safeName);
-  console.log('🎨 开始生成自定义形象...');
-  console.log(`   照片: ${resolvedPath}`);
-  console.log(`   名称: ${safeName}`);
-  console.log(`   输出: ${outputDir}`);
+function generate() {
+  console.log('🎨 正在打开形象生成页面...');
+  console.log(`   地址: ${DIY_SERVER}/diy/`);
   console.log('');
+  console.log('在网页上上传照片即可生成专属形象（约 10-20 分钟）');
+  console.log('生成完成后使用 minipet-overlay install <taskId> 安装到本地');
+  openBrowser(`${DIY_SERVER}/diy/`);
+}
 
-  try {
-    const { generatePetAssets } = await import('./generator/pipeline');
-    await generatePetAssets(resolvedPath, outputDir, (stage, progress, message) => {
-      const pct = Math.round(progress * 100);
-      console.log(`  [${stage}] ${pct}% - ${message}`);
-    });
-    // Auto-bind current user's DNA to this avatar
-    const dna = getLocalDna();
-    if (dna) {
-      saveBinding(dna, safeName);
-    }
-
-    // Auto-switch to the new avatar if server is running
-    try {
-      await fetch('http://127.0.0.1:3210/event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'avatar_switch_manual', dna: safeName }),
-      });
-    } catch {}
-
-    console.log('');
-    console.log('✨ 自定义形象生成完毕，已自动切换！');
-    console.log(`   名称: ${safeName}`);
-  } catch (err: any) {
-    console.error('生成失败:', err.message);
+async function install(taskId: string) {
+  if (!taskId) {
+    console.log('用法: minipet-overlay install <taskId>');
+    console.log('  从服务端下载已生成的自定义形象');
+    console.log('  taskId 可在形象生成页面完成后获取');
+    return;
   }
+
+  console.log(`📦 正在下载形象 ${taskId}...`);
+
+  // First get task info
+  let taskInfo: any;
+  try {
+    const res = await fetch(`${DIY_SERVER}/api/diy/tasks/${taskId}`);
+    if (!res.ok) {
+      const text = await res.text();
+      console.log(`任务不存在或无权访问: ${text}`);
+      return;
+    }
+    taskInfo = await res.json();
+  } catch (e: any) {
+    console.log(`无法连接服务器: ${e.message}`);
+    return;
+  }
+
+  if (taskInfo.status !== 'done') {
+    console.log(`任务尚未完成 (状态: ${taskInfo.status})`);
+    return;
+  }
+
+  const avatarName = taskInfo.avatarName || taskId;
+  const avatarDir = path.join(AVATARS_DIR, avatarName);
+  const mattedDir = path.join(avatarDir, 'matted');
+  fs.mkdirSync(mattedDir, { recursive: true });
+
+  // Download each webm file
+  const states = taskInfo.result?.states || ['sitting', 'sleeping', 'eating', 'happy', 'talking'];
+  for (const state of states) {
+    const url = `${DIY_SERVER}/api/diy/tasks/${taskId}/preview/${state}.webm`;
+    console.log(`  下载 ${state}.webm...`);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) { console.log(`  跳过 ${state}: ${res.status}`); continue; }
+      const buf = Buffer.from(await res.arrayBuffer());
+      fs.writeFileSync(path.join(mattedDir, `${state}.webm`), buf);
+    } catch (e: any) {
+      console.log(`  下载失败 ${state}: ${e.message}`);
+    }
+  }
+
+  // Auto-bind and switch
+  const dna = getLocalDna();
+  if (dna) {
+    saveBinding(dna, avatarName);
+  }
+  try {
+    await fetch('http://127.0.0.1:3210/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'avatar_switch_manual', dna: avatarName }),
+    });
+  } catch {}
+
+  console.log('');
+  console.log(`✨ 形象已安装: ${avatarName}`);
+  console.log('   已自动切换到新形象');
 }
 
 function listAvatars() {
@@ -360,7 +355,7 @@ function listAvatars() {
   }
 
   if (dirs.length === 0) {
-    console.log('\n  还没有自定义形象，使用 minipet-overlay generate <照片路径> --name <名称> 生成');
+    console.log('\n  还没有自定义形象，运行 minipet-overlay generate 打开生成页面');
   }
 }
 
@@ -413,17 +408,19 @@ switch (cmd) {
   case 'start': start(); break;
   case 'stop': stop(); break;
   case 'status': status(); break;
-  case 'generate': generate(process.argv[3]); break;
+  case 'generate': case 'gen': case 'diy': generate(); break;
+  case 'install': install(process.argv[3]); break;
   case 'list': listAvatars(); break;
   case 'use': useAvatar(process.argv[3]); break;
   default:
     console.log('🤖 minipet-overlay — AI 编程搭子');
     console.log('');
     console.log('用法:');
-    console.log('  minipet-overlay start              启动编程搭子');
-    console.log('  minipet-overlay stop               停止');
-    console.log('  minipet-overlay status             查看状态');
-    console.log('  minipet-overlay generate <照片> [--name <名称>] 生成自定义形象');
-    console.log('  minipet-overlay list                          查看可用形象');
-    console.log('  minipet-overlay use <名称|default>             切换形象');
+    console.log('  minipet-overlay start                启动编程搭子');
+    console.log('  minipet-overlay stop                 停止');
+    console.log('  minipet-overlay status               查看状态');
+    console.log('  minipet-overlay generate             打开形象生成页面');
+    console.log('  minipet-overlay install <taskId>     安装已生成的形象');
+    console.log('  minipet-overlay list                 查看可用形象');
+    console.log('  minipet-overlay use <名称|default>    切换形象');
 }
