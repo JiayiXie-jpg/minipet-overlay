@@ -1,0 +1,32 @@
+{
+  "name": "minipet-overlay",
+  "version": "2.0.4",
+  "description": "AI 编程搭子 — 支持自定义形象的桌面编程搭子",
+  "main": "dist-electron/main.js",
+  "bin": {
+    "minipet-overlay": "./dist/cli.js"
+  },
+  "files": [
+    "dist/",
+    "dist-electron/",
+    "frontend/",
+    "electron/",
+    "assets/shasha/",
+    "tsconfig.electron.json"
+  ],
+  "scripts": {
+    "build": "tsc && tsc -p tsconfig.electron.json",
+    "postinstall": "node dist/setup.js",
+    "start": "node dist/cli.js start"
+  },
+  "dependencies": {
+    "electron": "^33.0.0",
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/ws": "^8.5.0",
+    "typescript": "^5.5.0"
+  }
+}

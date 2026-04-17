@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>MiniPet</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="bubble" class="bubble hidden"></div>
+  <div id="pet-container">
+    <video id="vid-sitting" class="pet-video active" src="/assets/shasha/sitting.webm" loop muted autoplay playsinline></video>
+    <video id="vid-sleeping" class="pet-video" src="/assets/shasha/sleeping.webm" loop muted playsinline></video>
+    <video id="vid-eating" class="pet-video" src="/assets/shasha/eating.webm" loop muted playsinline></video>
+    <video id="vid-happy" class="pet-video" src="/assets/shasha/happy.webm" loop muted playsinline></video>
+    <video id="vid-talking" class="pet-video" src="/assets/shasha/talking.webm" loop muted playsinline></video>
+  </div>
+  <audio id="tts-player" preload="none"></audio>
+  <script src="app.js"></script>
+</body>
+</html>
