@@ -387,6 +387,19 @@ app.post('/install', async (req, res) => {
   manualOverride = true;
   broadcast({ type: 'avatar_switch', dna: avatarName });
 
+  // Welcome voice after install
+  const welcomeMsg = '新形象安装成功啦～你看我好不好看？';
+  const audioUrl = await textToSpeech(welcomeMsg);
+  currentState = 'happy';
+  broadcast({ type: 'state_change', newState: 'happy' });
+  broadcast({ type: 'bubble', message: welcomeMsg, audioUrl });
+  setTimeout(() => {
+    if (currentState === 'happy') {
+      currentState = 'sitting';
+      broadcast({ type: 'state_change', newState: 'sitting' });
+    }
+  }, 8000);
+
   console.log(`[Install] Installed avatar: ${avatarName}`);
   res.json({ ok: true, avatarName });
 });
