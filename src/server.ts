@@ -290,6 +290,100 @@ app.post('/event', async (req, res) => {
   res.json({ ok: true });
 });
 
+// ---- Install API (for WebUI one-click install) ----
+
+const DIY_SERVER = process.env.DIY_SERVER || 'https://minipet.crazyma99.xyz';
+
+function getJwtToken(): string | null {
+  try {
+    const authPath = path.join(os.homedir(), '.claude-minipet', 'auth.json');
+    const data = JSON.parse(fs.readFileSync(authPath, 'utf-8'));
+    return data.token || null;
+  } catch { return null; }
+}
+
+function getLocalDna(): string | null {
+  try {
+    const statePath = path.join(os.homedir(), '.claude-minipet', 'state.json');
+    const state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
+    return state.dna || null;
+  } catch { return null; }
+}
+
+function saveBinding(dna: string, name: string) {
+  const bindings = loadBindings();
+  bindings[dna] = name;
+  fs.mkdirSync(path.dirname(BINDINGS_FILE), { recursive: true });
+  fs.writeFileSync(BINDINGS_FILE, JSON.stringify(bindings, null, 2));
+}
+
+app.post('/install', async (req, res) => {
+  const { taskId } = req.body;
+  if (!taskId) {
+    res.status(400).json({ ok: false, error: '缺少 taskId' });
+    return;
+  }
+
+  const diyApi = `${DIY_SERVER}/api/diy`;
+  const token = getJwtToken();
+
+  // 1. Query task status
+  let taskInfo: any;
+  try {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const taskRes = await fetch(`${diyApi}/tasks/${taskId}`, { headers });
+    if (!taskRes.ok) {
+      res.status(404).json({ ok: false, error: '任务不存在或无权访问' });
+      return;
+    }
+    taskInfo = await taskRes.json();
+  } catch (e: any) {
+    res.status(502).json({ ok: false, error: `无法连接服务器: ${e.message}` });
+    return;
+  }
+
+  if (!taskInfo.ok) {
+    res.status(400).json({ ok: false, error: taskInfo.error || '查询失败' });
+    return;
+  }
+
+  if (taskInfo.status !== 'done') {
+    res.status(400).json({ ok: false, error: `任务尚未完成 (状态: ${taskInfo.status})` });
+    return;
+  }
+
+  // 2. Download WebM files
+  const avatarName = taskInfo.avatar_name || taskId;
+  const avatarDir = path.join(AVATARS_DIR, avatarName);
+  const mattedDir = path.join(avatarDir, 'matted');
+  fs.mkdirSync(mattedDir, { recursive: true });
+
+  const states = ['sitting', 'sleeping', 'eating', 'happy', 'talking'];
+  for (const state of states) {
+    const url = `${diyApi}/tasks/${taskId}/preview/${state}.webm`;
+    try {
+      const dlRes = await fetch(url);
+      if (!dlRes.ok) continue;
+      const buf = Buffer.from(await dlRes.arrayBuffer());
+      fs.writeFileSync(path.join(mattedDir, `${state}.webm`), buf);
+    } catch {}
+  }
+
+  // 3. Auto-bind DNA and switch avatar
+  const dna = getLocalDna();
+  if (dna) {
+    saveBinding(dna, avatarName);
+  }
+
+  activeAvatar = avatarName;
+  manualOverride = true;
+  broadcast({ type: 'avatar_switch', dna: avatarName });
+
+  console.log(`[Install] Installed avatar: ${avatarName}`);
+  res.json({ ok: true, avatarName });
+});
+
 // ---- Meal reminders ----
 
 const MEAL_REMINDERS: Record<string, string> = {
