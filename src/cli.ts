@@ -90,7 +90,7 @@ function configureMinipet() {
 }
 
 function openBrowser(url = 'http://127.0.0.1:3210') {
-  const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+  const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start ""' : 'xdg-open';
   try { execSync(`${cmd} "${url}"`); } catch {}
 }
 

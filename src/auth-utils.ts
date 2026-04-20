@@ -28,7 +28,7 @@ export function openDiyWebUI() {
   const auth = loadAuth();
   const token = auth?.token || '';
   const url = token ? `${DIY_SERVER}/diy?token=${token}` : `${DIY_SERVER}/diy`;
-  const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+  const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start ""' : 'xdg-open';
   try {
     execSync(`${cmd} "${url}"`);
   } catch {}
