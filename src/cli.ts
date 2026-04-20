@@ -249,15 +249,14 @@ function status() {
   }
 }
 
-const DIY_SERVER = process.env.DIY_SERVER || 'http://118.196.36.27:8765';
-
 function generate() {
+  const { openDiyWebUI, getDiyServerUrl } = require('./auth-utils');
   console.log('🎨 正在打开形象生成页面...');
-  console.log(`   地址: ${DIY_SERVER}/diy/`);
+  console.log(`   地址: ${getDiyServerUrl()}/diy`);
   console.log('');
-  console.log('在网页上上传照片即可生成专属形象（约 10-20 分钟）');
+  console.log('在网页上上传照片即可生成专属形象（约 10-15 分钟）');
   console.log('生成完成后使用 minipet-overlay install <taskId> 安装到本地');
-  openBrowser(`${DIY_SERVER}/diy/`);
+  openDiyWebUI();
 }
 
 async function install(taskId: string) {
@@ -268,12 +267,18 @@ async function install(taskId: string) {
     return;
   }
 
+  const { getJwtToken, getDiyServerUrl } = require('./auth-utils');
+  const diyApi = `${getDiyServerUrl()}/api/diy`;
+  const token = getJwtToken();
+
   console.log(`📦 正在下载形象 ${taskId}...`);
 
-  // First get task info
+  // Get task info (requires auth)
   let taskInfo: any;
   try {
-    const res = await fetch(`${DIY_SERVER}/api/diy/tasks/${taskId}`);
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${diyApi}/tasks/${taskId}`, { headers });
     if (!res.ok) {
       const text = await res.text();
       console.log(`任务不存在或无权访问: ${text}`);
@@ -285,20 +290,25 @@ async function install(taskId: string) {
     return;
   }
 
+  if (!taskInfo.ok) {
+    console.log(`查询失败: ${taskInfo.error || '未知错误'}`);
+    return;
+  }
+
   if (taskInfo.status !== 'done') {
     console.log(`任务尚未完成 (状态: ${taskInfo.status})`);
     return;
   }
 
-  const avatarName = taskInfo.avatarName || taskId;
+  const avatarName = taskInfo.avatar_name || taskId;
   const avatarDir = path.join(AVATARS_DIR, avatarName);
   const mattedDir = path.join(avatarDir, 'matted');
   fs.mkdirSync(mattedDir, { recursive: true });
 
-  // Download each webm file
-  const states = taskInfo.result?.states || ['sitting', 'sleeping', 'eating', 'happy', 'talking'];
+  // Download each webm file (preview endpoints don't require auth)
+  const states = ['sitting', 'sleeping', 'eating', 'happy', 'talking'];
   for (const state of states) {
-    const url = `${DIY_SERVER}/api/diy/tasks/${taskId}/preview/${state}.webm`;
+    const url = `${diyApi}/tasks/${taskId}/preview/${state}.webm`;
     console.log(`  下载 ${state}.webm...`);
     try {
       const res = await fetch(url);

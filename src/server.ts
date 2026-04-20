@@ -37,7 +37,10 @@ function hasAvatarForName(name: string): boolean {
 let TTS_ACCESS_KEY = process.env.TTS_ACCESS_KEY || '';
 let TTS_APP_KEY = process.env.TTS_APP_KEY || '';
 
-const DIY_SERVER = process.env.DIY_SERVER || 'http://118.196.36.27:8765';
+const TTS_CREDENTIAL_URLS = [
+  'https://minipet.crazyma99.xyz/api/credentials/tts',
+  'http://118.196.36.27:8765/api/credentials/tts',
+];
 
 async function fetchTTSCredentials() {
   if (TTS_ACCESS_KEY && TTS_APP_KEY) return; // already set via env
@@ -45,15 +48,21 @@ async function fetchTTSCredentials() {
     const authPath = path.join(os.homedir(), '.claude-minipet', 'auth.json');
     const auth = JSON.parse(fs.readFileSync(authPath, 'utf-8'));
     if (!auth?.token) return;
-    const res = await fetch(`${DIY_SERVER}/api/credentials/tts`, {
-      headers: { Authorization: `Bearer ${auth.token}` },
-    });
-    if (res.ok) {
-      const data = await res.json() as { accessKey: string; appKey: string };
-      TTS_ACCESS_KEY = data.accessKey;
-      TTS_APP_KEY = data.appKey;
-      console.log('[TTS] Credentials fetched from server');
+    for (const url of TTS_CREDENTIAL_URLS) {
+      try {
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${auth.token}` },
+        });
+        if (res.ok) {
+          const data = await res.json() as { accessKey: string; appKey: string };
+          TTS_ACCESS_KEY = data.accessKey;
+          TTS_APP_KEY = data.appKey;
+          console.log(`[TTS] Credentials fetched from ${new URL(url).host}`);
+          return;
+        }
+      } catch {}
     }
+    console.log('[TTS] Could not fetch credentials, voice disabled');
   } catch {
     console.log('[TTS] Could not fetch credentials, voice disabled');
   }

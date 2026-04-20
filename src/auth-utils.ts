@@ -4,7 +4,7 @@ import os from 'os';
 import { execSync } from 'child_process';
 
 const AUTH_FILE = path.join(os.homedir(), '.claude-minipet', 'auth.json');
-const DIY_SERVER = process.env.DIY_SERVER || 'http://118.196.36.27:8765';
+export const DIY_SERVER = process.env.DIY_SERVER || 'https://minipet.crazyma99.xyz';
 
 export function loadAuth(): { token: string; email: string; userId: number } | null {
   try {
@@ -24,12 +24,10 @@ export function getDiyServerUrl(): string {
   return DIY_SERVER;
 }
 
-export function openDiyWebUI(name?: string) {
-  const base = `${DIY_SERVER}/diy/`;
-  const params = new URLSearchParams();
-  if (name) params.set('name', name);
-
-  const url = params.toString() ? `${base}?${params}` : base;
+export function openDiyWebUI() {
+  const auth = loadAuth();
+  const token = auth?.token || '';
+  const url = token ? `${DIY_SERVER}/diy?token=${token}` : `${DIY_SERVER}/diy`;
   const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
   try {
     execSync(`${cmd} "${url}"`);
