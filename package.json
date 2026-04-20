@@ -1,6 +1,6 @@
 {
   "name": "minipet-overlay",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "AI 编程搭子 — 支持自定义形象的桌面编程搭子",
   "main": "dist-electron/main.js",
   "bin": {
