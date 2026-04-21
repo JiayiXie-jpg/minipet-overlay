@@ -1,8 +1,18 @@
 # minipet-overlay
 
-AI 编程搭子 — 陪你写代码的亲密伙伴
+[![npm version](https://img.shields.io/npm/v/minipet-overlay.svg)](https://www.npmjs.com/package/minipet-overlay)
+[![npm downloads](https://img.shields.io/npm/dw/minipet-overlay.svg)](https://www.npmjs.com/package/minipet-overlay)
+[![license](https://img.shields.io/npm/l/minipet-overlay.svg)](https://github.com/JiayiXie-jpg/minipet-overlay/blob/main/LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
+
+**AI 编程搭子 — 陪你写代码的亲密伙伴**
+
+> A desktop AI coding companion with animated avatars and TTS voice — cheers you on while you code with Claude Code.
 
 桌面悬浮窗形式的 AI 编程搭子，用动画和语音为你加油打气。支持自定义形象，默认内置莎莎。
+
+<!-- 📸 欢迎提交截图或 GIF 到此处展示效果！ -->
+<!-- <p align="center"><img src="docs/demo.gif" width="400" /></p> -->
 
 ## 架构
 
@@ -121,3 +131,13 @@ minipet-overlay list                           # 查看可用形象
 - **桌面**: Electron 透明无框悬浮窗
 - **形象生成**: Vision LLM + Seedream + Seedance + SAM3
 - **事件源**: claude-minipet Claude Code hooks
+
+## Contributing
+
+欢迎贡献代码！请提交 Issue 或 Pull Request。
+
+Contributions are welcome! Feel free to open an issue or submit a pull request.
+
+## License
+
+[MIT](LICENSE) &copy; [JiayiXie](https://github.com/JiayiXie-jpg)
