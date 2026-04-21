@@ -1,7 +1,7 @@
 {
   "name": "minipet-overlay",
   "version": "3.3.4",
-  "description": "AI 编程搭子 — 支持自定义形象的桌面编程搭子",
+  "description": "AI 编程搭子 — 支持自定义形象的桌面编程搭子 | AI coding companion with custom avatars, animations & TTS",
   "main": "dist-electron/main.js",
   "bin": {
     "minipet-overlay": "./dist/cli.js"
@@ -18,6 +18,28 @@
     "build": "tsc && tsc -p tsconfig.electron.json",
     "postinstall": "node dist/setup.js",
     "start": "node dist/cli.js start"
+  },
+  "keywords": [
+    "desktop-pet",
+    "electron",
+    "claude",
+    "claude-code",
+    "ai-companion",
+    "coding-companion",
+    "overlay",
+    "tts",
+    "desktop-overlay",
+    "virtual-pet"
+  ],
+  "author": "JiayiXie <JiayiXie@whu.edu.cn>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JiayiXie-jpg/minipet-overlay.git"
+  },
+  "homepage": "https://github.com/JiayiXie-jpg/minipet-overlay#readme",
+  "bugs": {
+    "url": "https://github.com/JiayiXie-jpg/minipet-overlay/issues"
   },
   "dependencies": {
     "electron": "^33.0.0",
